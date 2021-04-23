@@ -409,15 +409,42 @@ class SerializerTest : public ::testing::Test {
     EXPECT_TRUE(msg_diff.Compare(proto, actual_proto)) << message_differences;
   }
 
-  void ExpectDeserializationRoundTrip(const google_firestore_v1_Value& model,
-                                      const v1::Value& proto,
-                                      TypeOrder type) {
+    void Sort(google_firestore_v1_Value &value) {
+    if (value.which_value_type==google_firestore_v1_Value_map_value_tag){
+      std::sort(value.map_value.fields,
+                value.map_value.fields+value.map_value.fields_count,[](const google_firestore_v1_MapValue_FieldsEntry& lhs,const google_firestore_v1_MapValue_FieldsEntry& rhs){
+                  return nanopb::MakeStringView(lhs.key)< nanopb::MakeStringView(rhs.key);
+      });
+
+      for (pb_size_t i = 0; i < value.map_value.fields_count;++i){
+        Sort(value.map_value.fields[i].value);
+      }
+    } else if  (value.which_value_type==google_firestore_v1_Value_array_value_tag){
+        for (pb_size_t i = 0; i < value.array_value.values_count;++i){
+          Sort(value.array_value.values[i]);
+        }
+      }
+
+    }
+
+    void Sort(google_firestore_v1_Document &value) {
+        std::sort(value.fields,
+                  value.fields+value.fields_count,[](const google_firestore_v1_Document_FieldsEntry& lhs,const google_firestore_v1_Document_FieldsEntry& rhs){
+                    return nanopb::MakeStringView(lhs.key)< nanopb::MakeStringView(rhs.key);
+                });
+    }
+
+    void ExpectDeserializationRoundTrip(const google_firestore_v1_Value& model,
+                                        const v1::Value& proto,
+                                        TypeOrder type) {
     ByteString bytes = ProtobufSerialize(proto);
     StringReader reader(bytes);
 
     auto message = Message<google_firestore_v1_Value>::TryParse(&reader);
     EXPECT_OK(reader.status());
     EXPECT_EQ(type, GetTypeOrder(*message));
+    // libprotobuf does not retain map ordering. We need to restore the ordering.
+    Sort(*message);
     EXPECT_EQ(model, *message);
   }
 
@@ -462,6 +489,10 @@ class SerializerTest : public ::testing::Test {
     auto message =
         Message<google_firestore_v1_BatchGetDocumentsResponse>::TryParse(
             &reader);
+    if (message->which_result==google_firestore_v1_BatchGetDocumentsResponse_found_tag) {
+      // libprotobuf does not retain map ordering. We need to restore the ordering.
+      Sort(message->found);
+    }
     MutableDocument actual_model =
         serializer.DecodeMaybeDocument(reader.context(), *message);
 
@@ -470,7 +501,7 @@ class SerializerTest : public ::testing::Test {
     if (actual_model.is_found_document()) {
       EXPECT_EQ(value, actual_model.data());
     } else if (actual_model.is_no_document()) {
-      EXPECT_EQ(ObjectValue{}, *value);
+      EXPECT_EQ(ObjectValue{}, actual_model.data());
     } else if (actual_model.is_unknown_document()) {
       // TODO(rsgowman): implement.
       // In particular, since this statement isn't hit, it implies a missing
@@ -556,7 +587,7 @@ class SerializerTest : public ::testing::Test {
     StringReader reader{bytes};
 
     auto message = Message<T>::TryParse(&reader);
-    auto model = decode_func(serializer, reader.context(), *message, args...);
+    auto model = decode_func(serializer, reader.context(), std::move(*message), args...);
 
     EXPECT_OK(reader.status());
     return model;
@@ -860,15 +891,6 @@ TEST_F(SerializerTest, EncodesFieldValuesWithRepeatedEntries) {
   EXPECT_EQ(expected_model, *actual_model);
 }
 
-TEST_F(SerializerTest, BadNullValue) {
-  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(Value(nullptr)));
-
-  // Alter the null value from 0 to 1.
-  Mutate(&bytes[1], /*expected_initial_value=*/0, /*new_value=*/1);
-
-  ExpectFailedStatusDuringFieldValueDecode(
-      Status(Error::kErrorDataLoss, "ignored"), bytes);
-}
 
 TEST_F(SerializerTest, BadBoolValueInterpretedAsTrue) {
   std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(Value(true)));
@@ -907,28 +929,6 @@ TEST_F(SerializerTest, BadStringValue) {
   // Claim that the string length is 5 instead of 1. (The first two bytes are
   // used by the encoded tag.)
   Mutate(&bytes[2], /*expected_initial_value=*/1, /*new_value=*/5);
-
-  ExpectFailedStatusDuringFieldValueDecode(
-      Status(Error::kErrorDataLoss, "ignored"), bytes);
-}
-
-TEST_F(SerializerTest, BadTimestampValue_TooLarge) {
-  auto max_ts = Value(TimestampInternal::Max());
-  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(max_ts));
-
-  // Add some time, which should push us above the maximum allowed timestamp.
-  Mutate(&bytes[4], 0x82, 0x83);
-
-  ExpectFailedStatusDuringFieldValueDecode(
-      Status(Error::kErrorDataLoss, "ignored"), bytes);
-}
-
-TEST_F(SerializerTest, BadTimestampValue_TooSmall) {
-  auto min_ts = Value(TimestampInternal::Min());
-  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(min_ts));
-
-  // Remove some time, which should push us below the minimum allowed timestamp.
-  Mutate(&bytes[4], 0x92, 0x91);
 
   ExpectFailedStatusDuringFieldValueDecode(
       Status(Error::kErrorDataLoss, "ignored"), bytes);
@@ -1006,21 +1006,6 @@ TEST_F(SerializerTest, IncompleteFieldValue) {
   ASSERT_EQ(0x00, bytes[1]);
   bytes.pop_back();
 
-  ExpectFailedStatusDuringFieldValueDecode(
-      Status(Error::kErrorDataLoss, "ignored"), bytes);
-}
-
-TEST_F(SerializerTest, IncompleteTag) {
-  std::vector<uint8_t> bytes;
-  ExpectFailedStatusDuringFieldValueDecode(
-      Status(Error::kErrorDataLoss, "ignored"), bytes);
-}
-
-TEST_F(SerializerTest, FailOnInvalidInputBytes) {
-  // Invalid inputs should fail gracefully without assertions. The following
-  // bytes correspond to a Map FieldValue with an empty value. It was
-  // generated by our fuzz tests and used to trigger an assertion.
-  std::vector<uint8_t> bytes = {0x32, 0x02, 0x0a, 0x00};
   ExpectFailedStatusDuringFieldValueDecode(
       Status(Error::kErrorDataLoss, "ignored"), bytes);
 }

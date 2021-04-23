@@ -310,6 +310,7 @@ MutableDocument Serializer::DecodeMaybeDocument(
     default:
       context->Fail(
           StringFormat("Unknown result case: %s", response.which_result));
+      return MutableDocument::InvalidDocument({});
   }
 
   UNREACHABLE();

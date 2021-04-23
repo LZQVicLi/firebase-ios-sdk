@@ -149,7 +149,7 @@ ViewDocumentChanges View::ComputeDocumentChanges(
     bool change_applied = false;
     // Calculate change
     if (old_doc && new_doc) {
-      bool docs_equal = (*old_doc)->data() == (*old_doc)->data();
+      bool docs_equal = (*old_doc)->data() == (*new_doc)->data();
       if (!docs_equal) {
         if (!ShouldWaitForSyncedDocument(*new_doc, *old_doc)) {
           change_set.AddChange(
