@@ -141,8 +141,9 @@ ComparisonResult CompareBlobs(const google_firestore_v1_Value& left,
                : util::Compare(left.bytes_value->size, right.bytes_value->size);
   } else {
     // An empty blob is represented by a nullptr or an empty byte array
-    return util::Compare(!(left.bytes_value == nullptr || left.bytes_value->size==0),
-                         !(right.bytes_value == nullptr || right.bytes_value->size==0));
+    return util::Compare(
+        !(left.bytes_value == nullptr || left.bytes_value->size == 0),
+        !(right.bytes_value == nullptr || right.bytes_value->size == 0));
   }
 }
 

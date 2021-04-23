@@ -169,10 +169,12 @@ model::DatabaseId DbId(std::string project) {
 }
 
 google_firestore_v1_Value Ref(std::string project, absl::string_view path) {
+  model::DatabaseId database_id = DbId(std::move(project));
   google_firestore_v1_Value result{};
   result.which_value_type = google_firestore_v1_Value_reference_value_tag;
-  result.string_value = nanopb::MakeBytesArray(StringFormat(
-      "projects/%s/databases/(default)/documents/%s", project, path));
+  result.string_value = nanopb::MakeBytesArray(
+      StringFormat("projects/%s/databases/%s/documents/%s",
+                   database_id.project_id(), database_id.database_id(), path));
   return result;
 }
 
@@ -194,11 +196,10 @@ model::MutableDocument Doc(absl::string_view key,
                                         ObjectValue{data});
 }
 
-    model::MutableDocument Doc(absl::string_view key,
-                               int64_t version) {
-      return MutableDocument::FoundDocument(Key(key), Version(version),
-                                            ObjectValue{});
-    }
+model::MutableDocument Doc(absl::string_view key, int64_t version) {
+  return MutableDocument::FoundDocument(Key(key), Version(version),
+                                        ObjectValue{});
+}
 
 model::MutableDocument Doc(absl::string_view key,
                            int64_t version,

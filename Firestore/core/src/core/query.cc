@@ -221,8 +221,8 @@ Query Query::AsCollectionQueryAtPath(ResourcePath path) const {
 // MARK: - Matching
 
 bool Query::Matches(const Document& doc) const {
-  return doc->is_found_document() &&MatchesPathAndCollectionGroup(doc) && MatchesOrderBy(doc) &&
-         MatchesFilters(doc) && MatchesBounds(doc);
+  return doc->is_found_document() && MatchesPathAndCollectionGroup(doc) &&
+         MatchesOrderBy(doc) && MatchesFilters(doc) && MatchesBounds(doc);
 }
 
 bool Query::MatchesPathAndCollectionGroup(const Document& doc) const {

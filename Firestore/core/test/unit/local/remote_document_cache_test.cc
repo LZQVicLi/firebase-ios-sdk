@@ -25,8 +25,8 @@
 #include "Firestore/core/src/local/remote_document_cache.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_key_set.h"
-#include "Firestore/core/src/model/value_util.h"
 #include "Firestore/core/src/model/object_value.h"
+#include "Firestore/core/src/model/value_util.h"
 #include "Firestore/core/src/util/string_apple.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
 #include "absl/strings/string_view.h"
@@ -38,13 +38,13 @@ namespace firestore {
 namespace local {
 namespace {
 
+using model::DeepClone;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::MutableDocument;
 using model::MutableDocumentMap;
 using model::ObjectValue;
-    using model::DeepClone;
 using model::SnapshotVersion;
 
 using testing::IsSupersetOf;

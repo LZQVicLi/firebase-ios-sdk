@@ -1147,7 +1147,7 @@ std::shared_ptr<Bound> Serializer::DecodeBound(
   index_components.values = MakeArray<google_firestore_v1_Value>(count);
 
   for (pb_size_t i = 0; i < count; ++i) {
-    index_components.values[i] = cursor.values[i];
+    index_components.values[i] = DeepClone(cursor.values[i]);
   }
 
   return std::make_shared<Bound>(index_components, cursor.before);

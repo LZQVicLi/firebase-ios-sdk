@@ -150,7 +150,10 @@ TEST(MutationTest, AppliesLocalServerTimestampTransformToDocuments) {
   expected_data.Set(Field("foo.bar"),
                     EncodeServerTimestamp(now, absl::nullopt));
 
-  MutableDocument expected_doc = MutableDocument::FoundDocument(Key("collection/key"), Version(0), std::move(expected_data)).SetHasLocalMutations();
+  MutableDocument expected_doc =
+      MutableDocument::FoundDocument(Key("collection/key"), Version(0),
+                                     std::move(expected_data))
+          .SetHasLocalMutations();
 
   EXPECT_EQ(doc, expected_doc);
 }
