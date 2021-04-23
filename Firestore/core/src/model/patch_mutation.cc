@@ -80,6 +80,7 @@ void PatchMutation::Rep::ApplyToRemoteDocument(
     // of the document in our cache and return an UnknownDocument with the known
     // update_time.
     document.ConvertToUnknownDocument(mutation_result.version());
+    return;
   }
 
   ObjectValue new_data{document.data()};

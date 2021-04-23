@@ -150,8 +150,7 @@ TEST(MutationTest, AppliesLocalServerTimestampTransformToDocuments) {
   expected_data.Set(Field("foo.bar"),
                     EncodeServerTimestamp(now, absl::nullopt));
 
-  MutableDocument expected_doc =
-      Doc("collection/key", 0, expected_data.Get()).SetHasLocalMutations();
+  MutableDocument expected_doc = MutableDocument::FoundDocument(Key("collection/key"), Version(0), std::move(expected_data)).SetHasLocalMutations();
 
   EXPECT_EQ(doc, expected_doc);
 }
@@ -344,7 +343,7 @@ TEST(MutationTest, AppliesLocalArrayUnionTransformWithNonPrimitiveElements) {
   // Union nested object values (one existing, one not).
   auto base_data = Map("array", Array(1, Map("a", "b")));
   TransformPairs transforms = {
-      {"array", ArrayUnion(WrapObject("a", "b"), WrapObject("c", "d"))}};
+      {"array", ArrayUnion(Map("a", "b"), Map("c", "d"))}};
   auto expected = Map("array", Array(1, Map("a", "b"), Map("c", "d")));
   TransformBaseDoc(base_data, transforms, expected);
 }
@@ -354,7 +353,7 @@ TEST(MutationTest,
   // Union objects that partially overlap an existing object.
   auto base_data = Map("array", Array(1, Map("a", "b", "c", "d")));
   TransformPairs transforms = {
-      {"array", ArrayUnion(WrapObject("a", "b"), WrapObject("c", "d"))}};
+      {"array", ArrayUnion(Map("a", "b"), Map("c", "d"))}};
   auto expected = Map(
       "array", Array(1, Map("a", "b", "c", "d"), Map("a", "b"), Map("c", "d")));
   TransformBaseDoc(base_data, transforms, expected);
@@ -392,7 +391,7 @@ TEST(MutationTest, AppliesLocalArrayRemoveTransformWithNonPrimitiveElements) {
   // Remove nested object values (one existing, one not).
   auto base_data = Map("array", Array(1, Map("a", "b")));
   TransformPairs transforms = {
-      {"array", ArrayRemove(WrapObject("a", "b"), WrapObject("c", "d"))}};
+      {"array", ArrayRemove(Map("a", "b"), Map("c", "d"))}};
   auto expected = Map("array", Array(1));
   TransformBaseDoc(base_data, transforms, expected);
 }

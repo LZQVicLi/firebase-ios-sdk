@@ -340,7 +340,7 @@ void LocalStoreTest::ResetPersistenceStats() {
       const Document& value = kv.second;                  \
       DocumentKey expected_key = Key(*key_path_iterator); \
       ASSERT_EQ(actual_key, expected_key);                \
-      ASSERT_TRUE(value->is_no_document());               \
+      ASSERT_FALSE(value->is_found_document());               \
       ++key_path_iterator;                                \
     }                                                     \
     last_changes_ = DocumentMap{};                        \
@@ -359,7 +359,7 @@ void LocalStoreTest::ResetPersistenceStats() {
   do {                                                \
     DocumentKey key = Key(key_path_string);           \
     Document actual = local_store_.ReadDocument(key); \
-    ASSERT_TRUE(actual->is_unknown_document());       \
+    ASSERT_FALSE(actual->is_valid_document());       \
   } while (0)
 
 /**
@@ -411,16 +411,16 @@ TEST_P(LocalStoreTest, HandlesSetMutation) {
   FSTAssertContains(
       Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations());
 
-  AcknowledgeMutationWithVersion(0);
+  AcknowledgeMutationWithVersion(1);
   FSTAssertChanged(
-      Doc("foo/bar", 0, Map("foo", "bar")).SetHasCommittedMutations());
+      Doc("foo/bar", 1, Map("foo", "bar")).SetHasCommittedMutations());
   if (IsGcEager()) {
     // Nothing is pinning this anymore, as it has been acknowledged and there
     // are no targets active.
     FSTAssertNotContains("foo/bar");
   } else {
     FSTAssertContains(
-        Doc("foo/bar", 0, Map("foo", "bar")).SetHasCommittedMutations());
+        Doc("foo/bar", 1, Map("foo", "bar")).SetHasCommittedMutations());
   }
 }
 

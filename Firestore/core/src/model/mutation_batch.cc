@@ -94,10 +94,10 @@ void MutationBatch::ApplyToLocalDocumentSet(DocumentMap& document_map) const {
                 key.ToString());
     // TODO(mutabledocuments): This method should take a map of MutableDocuments
     // and we should remove this cast.
-    MutableDocument& document = const_cast<MutableDocument&>(it->second.get());
+    auto& document = const_cast<MutableDocument&>(it->second.get());
     ApplyToLocalDocument(document, key);
     if (!document.is_valid_document()) {
-      document.ConvertToUnknownDocument(SnapshotVersion::None());
+      document.ConvertToNoDocument(SnapshotVersion::None());
     }
   }
 }

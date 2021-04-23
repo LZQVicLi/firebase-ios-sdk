@@ -194,6 +194,12 @@ model::MutableDocument Doc(absl::string_view key,
                                         ObjectValue{data});
 }
 
+    model::MutableDocument Doc(absl::string_view key,
+                               int64_t version) {
+      return MutableDocument::FoundDocument(Key(key), Version(version),
+                                            ObjectValue{});
+    }
+
 model::MutableDocument Doc(absl::string_view key,
                            int64_t version,
                            const google_firestore_v1_Value& data) {

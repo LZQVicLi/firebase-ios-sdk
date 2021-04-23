@@ -20,13 +20,14 @@
 #include <memory>
 #include <ostream>
 #include <utility>
-#include <vector>
+#include <set>
 
 #include "Firestore/core/include/firebase/firestore/timestamp.h"
 #include "Firestore/core/src/model/server_timestamp_util.h"
 #include "Firestore/core/src/model/value_util.h"
 #include "Firestore/core/src/nanopb/nanopb_util.h"
 #include "Firestore/core/src/util/hard_assert.h"
+#include "Firestore/core/src/util/comparison.h"
 #include "Firestore/core/src/util/to_string.h"
 #include "absl/algorithm/container.h"
 #include "absl/strings/str_cat.h"
@@ -36,6 +37,10 @@ namespace firestore {
 namespace model {
 
 using Type = TransformOperation::Type;
+
+    struct ValueCompare {
+        bool operator()(const google_firestore_v1_Value& lhs, const google_firestore_v1_Value& rhs)const { return Compare(lhs,rhs)==util::ComparisonResult::Ascending; };
+    };
 
 // MARK: - TransformOperation
 
@@ -246,10 +251,10 @@ google_firestore_v1_Value ArrayTransform::Rep::Apply(
       CoercedFieldValueArray(previous_value);
   if (type_ == Type::ArrayUnion) {
     // Gather the list of elements that have to be added.
-    std::vector<google_firestore_v1_Value> new_elements;
+    std::set<google_firestore_v1_Value,ValueCompare> new_elements;
     for (pb_size_t i = 0; i < elements_->values_count; ++i) {
       if (!Contains(array_value, elements_->values[i])) {
-        new_elements.push_back(elements_->values[i]);
+        new_elements.insert(elements_->values[i]);
       }
     }
 
@@ -276,8 +281,9 @@ google_firestore_v1_Value ArrayTransform::Rep::Apply(
     array_value.values_count = new_index;
   }
 
-  google_firestore_v1_Value result;
-  result.which_value_type = google_firestore_v1_ArrayValue_values_tag;
+  google_firestore_v1_Value result{};
+  result.which_value_type = google_firestore_v1_Value_array_value_tag;
+  result.array_value=array_value;
   return result;
 }
 
@@ -325,7 +331,7 @@ class NumericIncrementTransform::Rep : public TransformOperation::Rep {
  private:
   friend class NumericIncrementTransform;
 
-  google_firestore_v1_Value operand_;
+  google_firestore_v1_Value operand_{};
 };
 
 NumericIncrementTransform::NumericIncrementTransform(
@@ -381,7 +387,7 @@ google_firestore_v1_Value NumericIncrementTransform::Rep::ApplyToLocalView(
     const Timestamp& /* local_write_time */) const {
   absl::optional<google_firestore_v1_Value> base_value =
       ComputeBaseValue(previous_value);
-  google_firestore_v1_Value result;
+  google_firestore_v1_Value result{};
 
   // Return an integer value only if the previous value and the operand is an
   // integer.
@@ -404,7 +410,7 @@ NumericIncrementTransform::Rep::ComputeBaseValue(
     const absl::optional<google_firestore_v1_Value>& previous_value) const {
   if (IsNumber(previous_value)) return previous_value;
 
-  google_firestore_v1_Value zero_value;
+  google_firestore_v1_Value zero_value{};
   zero_value.which_value_type = google_firestore_v1_Value_integer_value_tag;
   return zero_value;
 }

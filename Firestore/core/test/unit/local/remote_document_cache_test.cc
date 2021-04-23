@@ -25,6 +25,7 @@
 #include "Firestore/core/src/local/remote_document_cache.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_key_set.h"
+#include "Firestore/core/src/model/value_util.h"
 #include "Firestore/core/src/model/object_value.h"
 #include "Firestore/core/src/util/string_apple.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
@@ -43,6 +44,7 @@ using model::DocumentMap;
 using model::MutableDocument;
 using model::MutableDocumentMap;
 using model::ObjectValue;
+    using model::DeepClone;
 using model::SnapshotVersion;
 
 using testing::IsSupersetOf;
@@ -174,7 +176,7 @@ TEST_P(RemoteDocumentCacheTest, RemoveDocument) {
     SetTestDocument(kDocPath);
     cache_->Remove(Key(kDocPath));
 
-    ASSERT_TRUE(cache_->Get(Key(kDocPath)).is_unknown_document());
+    ASSERT_FALSE(cache_->Get(Key(kDocPath)).is_valid_document());
   });
 }
 
@@ -201,8 +203,8 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingQuery) {
     MutableDocumentMap results =
         cache_->GetMatching(query, SnapshotVersion::None());
     std::vector<MutableDocument> docs = {
-        Doc("b/1", kVersion, kDocData),
-        Doc("b/2", kVersion, kDocData),
+        Doc("b/1", kVersion, DeepClone(kDocData)),
+        Doc("b/2", kVersion, DeepClone(kDocData)),
     };
     EXPECT_THAT(results, HasExactlyDocs(docs));
   });
@@ -217,7 +219,7 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingQuerySinceReadTime) {
     core::Query query = Query("b");
     MutableDocumentMap results = cache_->GetMatching(query, Version(12));
     std::vector<MutableDocument> docs = {
-        Doc("b/new", 3, kDocData),
+        Doc("b/new", 3, DeepClone(kDocData)),
     };
     EXPECT_THAT(results, HasExactlyDocs(docs));
   });
@@ -232,7 +234,7 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingUsesReadTimeNotUpdateTime) {
         core::Query query = Query("b");
         MutableDocumentMap results = cache_->GetMatching(query, Version(1));
         std::vector<MutableDocument> docs = {
-            Doc("b/old", 1, kDocData),
+            Doc("b/old", 1, DeepClone(kDocData)),
         };
         EXPECT_THAT(results, HasExactlyDocs(docs));
       });
@@ -284,7 +286,7 @@ MutableDocument RemoteDocumentCacheTest::SetTestDocument(
 
 MutableDocument RemoteDocumentCacheTest::SetTestDocument(
     const absl::string_view path, int update_time, int read_time) {
-  return SetTestDocument(path, kDocData, update_time, read_time);
+  return SetTestDocument(path, DeepClone(kDocData), update_time, read_time);
 }
 
 MutableDocument RemoteDocumentCacheTest::SetTestDocument(
@@ -294,7 +296,7 @@ MutableDocument RemoteDocumentCacheTest::SetTestDocument(
 
 MutableDocument RemoteDocumentCacheTest::SetTestDocument(
     const absl::string_view path) {
-  return SetTestDocument(path, kDocData, kVersion, kVersion);
+  return SetTestDocument(path, DeepClone(kDocData), kVersion, kVersion);
 }
 
 void RemoteDocumentCacheTest::VerifyValue(MutableDocument actual_doc,

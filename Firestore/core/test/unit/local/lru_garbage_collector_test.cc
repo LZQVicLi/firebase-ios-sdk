@@ -463,11 +463,11 @@ TEST_P(LruGarbageCollectorTest, RemoveOrphanedDocuments) {
   ASSERT_EQ(to_be_removed.size(), removed);
   persistence_->Run("verify", [&] {
     for (const DocumentKey& key : to_be_removed) {
-      ASSERT_TRUE(document_cache_->Get(key).is_unknown_document());
+      ASSERT_FALSE(document_cache_->Get(key).is_valid_document());
       ASSERT_FALSE(target_cache_->Contains(key));
     }
     for (const DocumentKey& key : expected_retained) {
-      ASSERT_FALSE(document_cache_->Get(key).is_unknown_document())
+      ASSERT_TRUE(document_cache_->Get(key).is_valid_document())
           << "Missing document " << key.ToString().c_str();
     }
   });
@@ -655,7 +655,7 @@ TEST_P(LruGarbageCollectorTest, RemoveTargetsThenGC) {
   ASSERT_EQ(expected_removed.size(), docs_removed);
   persistence_->Run("verify results", [&] {
     for (const DocumentKey& key : expected_removed) {
-      ASSERT_TRUE(document_cache_->Get(key).is_unknown_document())
+      ASSERT_FALSE(document_cache_->Get(key).is_valid_document())
           << "Did not expect to find " << key.ToString().c_str()
           << "in document cache";
       ASSERT_FALSE(target_cache_->Contains(key))
@@ -664,7 +664,7 @@ TEST_P(LruGarbageCollectorTest, RemoveTargetsThenGC) {
       ExpectSentinelRemoved(key);
     }
     for (const DocumentKey& key : expected_retained) {
-      ASSERT_FALSE(document_cache_->Get(key).is_unknown_document())
+      ASSERT_TRUE(document_cache_->Get(key).is_valid_document())
           << "Expected to find " << key.ToString().c_str()
           << " in document cache";
     }

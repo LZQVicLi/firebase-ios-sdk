@@ -247,10 +247,14 @@ model::ResourcePath Resource(absl::string_view field);
  */
 model::SnapshotVersion Version(int64_t version);
 
+        model::MutableDocument Doc(
+                absl::string_view key,
+                int64_t version = 0);
+
 model::MutableDocument Doc(
     absl::string_view key,
-    int64_t version = 0,
-    const google_firestore_v1_Value& data = google_firestore_v1_Value{});
+    int64_t version,
+    const google_firestore_v1_Value& data);
 
 model::MutableDocument Doc(absl::string_view key,
                            int64_t version,
