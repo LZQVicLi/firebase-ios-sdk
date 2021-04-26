@@ -152,7 +152,7 @@ class Serializer {
       const model::FieldTransform& field_transform) const;
   model::FieldTransform DecodeFieldTransform(
       util::ReadContext* context,
-      const google_firestore_v1_DocumentTransform_FieldTransform& proto) const;
+       google_firestore_v1_DocumentTransform_FieldTransform& proto) const;
 
   model::MutationResult DecodeMutationResult(
       util::ReadContext* context,

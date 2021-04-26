@@ -123,7 +123,7 @@ class LocalSerializer {
    * ::firestore::client::WriteBatch proto to the equivalent MutationBatch.
    */
   model::MutationBatch DecodeMutationBatch(
-      nanopb::Reader* reader, const firestore_client_WriteBatch& proto) const;
+      nanopb::Reader* reader,  firestore_client_WriteBatch& proto) const;
 
   google_protobuf_Timestamp EncodeVersion(
       const model::SnapshotVersion& version) const;

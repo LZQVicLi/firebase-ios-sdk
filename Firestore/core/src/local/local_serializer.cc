@@ -319,7 +319,7 @@ Message<firestore_client_WriteBatch> LocalSerializer::EncodeMutationBatch(
 }
 
 MutationBatch LocalSerializer::DecodeMutationBatch(
-    nanopb::Reader* reader, const firestore_client_WriteBatch& proto) const {
+    nanopb::Reader* reader, firestore_client_WriteBatch& proto) const {
   int batch_id = proto.batch_id;
   Timestamp local_write_time = rpc_serializer_.DecodeTimestamp(
       reader->context(), proto.local_write_time);
@@ -343,7 +343,7 @@ MutationBatch LocalSerializer::DecodeMutationBatch(
                          proto.writes[i + 1].which_operation ==
                              google_firestore_v1_Write_transform_tag;
     if (has_transform) {
-      _google_firestore_v1_Write transform_mutation = proto.writes[i + 1];
+      google_firestore_v1_Write& transform_mutation = proto.writes[i + 1];
       HARD_ASSERT(
           proto.writes[i].which_operation ==
               google_firestore_v1_Write_update_tag,
@@ -353,6 +353,9 @@ MutationBatch LocalSerializer::DecodeMutationBatch(
           transform_mutation.transform.field_transforms_count;
       new_mutation.update_transforms =
           transform_mutation.transform.field_transforms;
+      // Prevent callsite from freeing memory
+      transform_mutation.transform.field_transforms_count=0;
+      transform_mutation.transform.field_transforms= nullptr;
 
       mutations.push_back(
           rpc_serializer_.DecodeMutation(reader->context(), new_mutation));

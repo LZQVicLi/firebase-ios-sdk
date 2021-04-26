@@ -584,7 +584,7 @@ Serializer::EncodeFieldTransform(const FieldTransform& field_transform) const {
 
 FieldTransform Serializer::DecodeFieldTransform(
     ReadContext* context,
-    const google_firestore_v1_DocumentTransform_FieldTransform& proto) const {
+     google_firestore_v1_DocumentTransform_FieldTransform& proto) const {
   FieldPath field = DecodeFieldPath(context, proto.field_path);
 
   switch (proto.which_transform_type) {
@@ -598,16 +598,22 @@ FieldTransform Serializer::DecodeFieldTransform(
     }
 
     case google_firestore_v1_DocumentTransform_FieldTransform_append_missing_elements_tag: {  // NOLINT
-      return FieldTransform(std::move(field),
+      auto field_transform = FieldTransform(std::move(field),
                             ArrayTransform(TransformOperation::Type::ArrayUnion,
                                            proto.append_missing_elements));
+      proto.append_missing_elements.values_count= 0;
+      proto.append_missing_elements.values= nullptr;
+      return field_transform;
     }
 
     case google_firestore_v1_DocumentTransform_FieldTransform_remove_all_from_array_tag: {  // NOLINT
-      return FieldTransform(
+      auto field_transform = FieldTransform(
           std::move(field),
           ArrayTransform(TransformOperation::Type::ArrayRemove,
                          proto.remove_all_from_array));
+      proto.remove_all_from_array.values_count= 0;
+      proto.remove_all_from_array.values= nullptr;
+      return field_transform;
     }
 
     case google_firestore_v1_DocumentTransform_FieldTransform_increment_tag: {
