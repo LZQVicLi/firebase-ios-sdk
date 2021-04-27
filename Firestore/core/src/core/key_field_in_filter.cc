@@ -17,6 +17,7 @@
 #include "Firestore/core/src/core/key_field_in_filter.h"
 
 #include <memory>
+#include <set>
 #include <utility>
 
 #include "Firestore/core/src/model/document.h"
@@ -41,7 +42,7 @@ class KeyFieldInFilter::Rep : public FieldFilter::Rep {
  public:
   Rep(FieldPath field, google_firestore_v1_Value value)
       : FieldFilter::Rep(std::move(field), Operator::In, value) {
-    ValidateArrayValue(this->value());
+    keys_ = ExtractDocumentKeysFromValue(this->value());
   }
 
   Type type() const override {
@@ -49,6 +50,9 @@ class KeyFieldInFilter::Rep : public FieldFilter::Rep {
   }
 
   bool Matches(const model::Document& doc) const override;
+
+ private:
+  std::set<DocumentKey> keys_;
 };
 
 KeyFieldInFilter::KeyFieldInFilter(FieldPath field,
@@ -57,22 +61,12 @@ KeyFieldInFilter::KeyFieldInFilter(FieldPath field,
 }
 
 bool KeyFieldInFilter::Rep::Matches(const Document& doc) const {
-  const google_firestore_v1_ArrayValue& array_value = value().array_value;
-  return Contains(array_value, doc);
+  return keys_.find(doc->key()) != keys_.end();
 }
 
-bool KeyFieldInFilter::Contains(
-    const google_firestore_v1_ArrayValue& array_value, const Document& doc) {
-  google_firestore_v1_Value reference_value{};
-  reference_value.which_value_type =
-      google_firestore_v1_Value_reference_value_tag;
-  reference_value.reference_value =
-      nanopb::MakeBytesArray(doc->key().ToString());  // Verfy
-  return model::Contains(array_value, reference_value);
-}
-
-void KeyFieldInFilter::ValidateArrayValue(
+std::set<model::DocumentKey> KeyFieldInFilter::ExtractDocumentKeysFromValue(
     const google_firestore_v1_Value& value) {
+  std::set<DocumentKey> keys;
   HARD_ASSERT(GetTypeOrder(value) != TypeOrder::kArray,
               "Comparing on key with In/NotIn, but the value was not an Array");
   const google_firestore_v1_ArrayValue& array_value = value.array_value;
@@ -80,7 +74,10 @@ void KeyFieldInFilter::ValidateArrayValue(
     HARD_ASSERT(GetTypeOrder(array_value.values[i]) == TypeOrder::kReference,
                 "Comparing on key with In/NotIn, but an array value was not"
                 " a Reference");
+    keys.insert(DocumentKey::FromName(
+        nanopb::MakeString(array_value.values[i].reference_value)));
   }
+  return keys;
 }
 
 }  // namespace core

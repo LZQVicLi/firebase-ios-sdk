@@ -162,7 +162,33 @@ void ApplyChanges(
 
   free(parent->fields);
   parent->fields = target_fields;
-  parent->fields_count = target_count;
+  parent->fields_count = static_cast<pb_size_t>(target_count);
+}
+
+void SortFields(google_firestore_v1_Value& value);
+
+void SortFields(google_firestore_v1_MapValue& map_value) {
+  std::sort(map_value.fields, map_value.fields + map_value.fields_count,
+            [](const google_firestore_v1_MapValue_FieldsEntry& lhs,
+               const google_firestore_v1_MapValue_FieldsEntry& rhs) {
+              return nanopb::MakeStringView(lhs.key) <
+                     nanopb::MakeStringView(rhs.key);
+            });
+
+  for (pb_size_t i = 0; i < map_value.fields_count; ++i) {
+    SortFields(map_value.fields[i].value);
+  }
+}
+
+void SortFields(google_firestore_v1_Value& value) {
+  if (value.which_value_type == google_firestore_v1_Value_map_value_tag) {
+    SortFields(value.map_value);
+  } else if (value.which_value_type ==
+             google_firestore_v1_Value_array_value_tag) {
+    for (pb_size_t i = 0; i < value.array_value.values_count; ++i) {
+      SortFields(value.array_value.values[i]);
+    }
+  }
 }
 
 }  // namespace
@@ -181,6 +207,7 @@ ObjectValue ObjectValue::FromMapValue(google_firestore_v1_MapValue map_value) {
   google_firestore_v1_Value value{};
   value.which_value_type = google_firestore_v1_Value_map_value_tag;
   value.map_value = map_value;
+  SortFields(map_value);
   return ObjectValue{value};
 }
 
@@ -197,6 +224,7 @@ ObjectValue ObjectValue::FromFieldsEntry(
         nanopb::MakeBytesArray(nanopb::MakeString(fields_entry[i].key));
     value.map_value.fields[i].value = DeepClone(fields_entry[i].value);
   }
+  SortFields(value.map_value);
   return ObjectValue{value};
 }
 

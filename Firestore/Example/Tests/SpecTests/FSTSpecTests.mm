@@ -333,7 +333,7 @@ NSString *ToTargetIdListString(const ActiveTargetMap &map) {
   } else if ([options[@"hasCommittedMutations"] isEqualToNumber:@YES]) {
     doc.SetHasCommittedMutations();
   }
-  return DocumentViewChange{doc, type};
+  return DocumentViewChange{std::move(doc), type};
 }
 
 #pragma mark - Methods for doing the steps of the spec test.

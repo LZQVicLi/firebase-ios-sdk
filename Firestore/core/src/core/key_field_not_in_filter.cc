@@ -38,7 +38,7 @@ class KeyFieldNotInFilter::Rep : public FieldFilter::Rep {
  public:
   Rep(FieldPath field, google_firestore_v1_Value value)
       : FieldFilter::Rep(std::move(field), Operator::NotIn, value) {
-    KeyFieldInFilter::ValidateArrayValue(this->value());
+    keys_ = KeyFieldInFilter::ExtractDocumentKeysFromValue(this->value());
   }
 
   Type type() const override {
@@ -46,6 +46,9 @@ class KeyFieldNotInFilter::Rep : public FieldFilter::Rep {
   }
 
   bool Matches(const model::Document& doc) const override;
+
+ private:
+  std::set<DocumentKey> keys_;
 };
 
 KeyFieldNotInFilter::KeyFieldNotInFilter(FieldPath field,
@@ -54,8 +57,7 @@ KeyFieldNotInFilter::KeyFieldNotInFilter(FieldPath field,
 }
 
 bool KeyFieldNotInFilter::Rep::Matches(const Document& doc) const {
-  const google_firestore_v1_ArrayValue& array_value = value().array_value;
-  return !KeyFieldInFilter::Contains(array_value, doc);
+  return keys_.find(doc->key()) == keys_.end();
 }
 
 }  // namespace core

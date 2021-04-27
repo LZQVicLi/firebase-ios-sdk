@@ -399,9 +399,11 @@ google_firestore_v1_Value NumericIncrementTransform::Rep::ApplyToLocalView(
     result.integer_value =
         SafeIncrement(base_value->integer_value, operand_.integer_value);
   } else if (IsInteger(base_value)) {
+    result.which_value_type = google_firestore_v1_Value_double_value_tag;
     result.double_value = base_value->integer_value + OperandAsDouble();
   } else {
     HARD_ASSERT(IsDouble(base_value), "'base_value' is not of numeric type");
+    result.which_value_type = google_firestore_v1_Value_double_value_tag;
     result.double_value = base_value->double_value + OperandAsDouble();
   }
 

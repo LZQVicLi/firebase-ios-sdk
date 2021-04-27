@@ -354,8 +354,8 @@ MutationBatch LocalSerializer::DecodeMutationBatch(
       new_mutation.update_transforms =
           transform_mutation.transform.field_transforms;
       // Prevent callsite from freeing memory
-      transform_mutation.transform.field_transforms_count=0;
-      transform_mutation.transform.field_transforms= nullptr;
+      transform_mutation.transform.field_transforms_count = 0;
+      transform_mutation.transform.field_transforms = nullptr;
 
       mutations.push_back(
           rpc_serializer_.DecodeMutation(reader->context(), new_mutation));

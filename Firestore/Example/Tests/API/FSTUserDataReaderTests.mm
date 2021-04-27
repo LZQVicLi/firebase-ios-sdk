@@ -185,7 +185,7 @@ union DoubleBits {
 
 - (void)testConvertsNestedObjects {
   ObjectValue actual = FSTTestObjectValue(@{@"a" : @{@"b" : @{@"c" : @"foo"}, @"d" : @YES}});
-  ObjectValue expected = ObjectValue(Map("a", Map("b", Map("c", "foo")), "d", true));
+  ObjectValue expected = ObjectValue(Map("a", Map("b", Map("c", "foo"), "d", true)));
   XCTAssertTrue(actual == expected);
 }
 
@@ -223,23 +223,22 @@ union DoubleBits {
 
 - (void)testCreatesArrayUnionTransforms {
   PatchMutation patchMutation = FSTTestPatchMutation(@"collection/key", @{
-    @"foo" : [FIRFieldValue fieldValueForArrayUnion:@[ @"tag" ]],
-    @"bar.baz" :
-        [FIRFieldValue fieldValueForArrayUnion:@[ @YES, @{@"nested" : @{@"a" : @[ @1, @2 ]}} ]]
+    @"a" : [FIRFieldValue fieldValueForArrayUnion:@[ @"tag" ]],
+    @"b.c" : [FIRFieldValue fieldValueForArrayUnion:@[ @YES, @{@"nested" : @{@"a" : @[ @1, @2 ]}} ]]
   },
                                                      {});
   XCTAssertEqual(patchMutation.field_transforms().size(), 2u);
 
   SetMutation setMutation = FSTTestSetMutation(@"collection/key", @{
-    @"foo" : [FIRFieldValue fieldValueForArrayUnion:@[ @"tag" ]],
-    @"bar" : [FIRFieldValue fieldValueForArrayUnion:@[ @YES, @{@"nested" : @{@"a" : @[ @1, @2 ]}} ]]
+    @"a" : [FIRFieldValue fieldValueForArrayUnion:@[ @"tag" ]],
+    @"b" : [FIRFieldValue fieldValueForArrayUnion:@[ @YES, @{@"nested" : @{@"a" : @[ @1, @2 ]}} ]]
   });
   XCTAssertEqual(setMutation.field_transforms().size(), 2u);
 
   const FieldTransform &patchFirst = patchMutation.field_transforms()[0];
-  XCTAssertEqual(patchFirst.path(), FieldPath({"foo"}));
+  XCTAssertEqual(patchFirst.path(), FieldPath({"a"}));
   const FieldTransform &setFirst = setMutation.field_transforms()[0];
-  XCTAssertEqual(setFirst.path(), FieldPath({"foo"}));
+  XCTAssertEqual(setFirst.path(), FieldPath({"a"}));
   {
     google_firestore_v1_ArrayValue expectedElements = Array(FSTTestFieldValue(@"tag")).array_value;
     ArrayTransform expected(TransformOperation::Type::ArrayUnion, expectedElements);
@@ -248,9 +247,9 @@ union DoubleBits {
   }
 
   const FieldTransform &patchSecond = patchMutation.field_transforms()[1];
-  XCTAssertEqual(patchSecond.path(), FieldPath({"bar", "baz"}));
+  XCTAssertEqual(patchSecond.path(), FieldPath({"b", "c"}));
   const FieldTransform &setSecond = setMutation.field_transforms()[1];
-  XCTAssertEqual(setSecond.path(), FieldPath({"bar"}));
+  XCTAssertEqual(setSecond.path(), FieldPath({"b"}));
   {
     google_firestore_v1_ArrayValue expectedElements =
         Array(FSTTestFieldValue(@YES), FSTTestFieldValue(

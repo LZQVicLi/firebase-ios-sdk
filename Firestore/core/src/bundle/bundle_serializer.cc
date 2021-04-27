@@ -297,6 +297,15 @@ LimitType DecodeLimitType(JsonReader& reader, const json& query) {
   }
 }
 
+google_type_LatLng DecodeGeoPointValue(JsonReader& reader,
+                                       const json& geo_json) {
+  google_type_LatLng result{};
+
+  result.latitude = reader.OptionalDouble("latitude", geo_json, 0.0);
+  result.longitude = reader.OptionalDouble("longitude", geo_json, 0.0);
+  return result;
+}
+
 pb_bytes_array_t* DecodeBytesValue(JsonReader& reader,
                                    const std::string& bytes_string) {
   std::string decoded;
@@ -518,13 +527,13 @@ BundledQuery BundleSerializer::DecodeBundledQuery(
 
   auto start_at_bound = DecodeBound(reader, structured_query, "startAt");
   std::shared_ptr<Bound> start_at;
-  if (!start_at_bound.position().values_count) {
+  if (start_at_bound.position().values_count) {
     start_at = std::make_shared<Bound>(std::move(start_at_bound));
   }
 
   auto end_at_bound = DecodeBound(reader, structured_query, "endAt");
   std::shared_ptr<Bound> end_at;
-  if (!end_at_bound.position().values_count) {
+  if (end_at_bound.position().values_count) {
     end_at = std::make_shared<Bound>(std::move(end_at_bound));
   }
 
@@ -633,7 +642,9 @@ Bound BundleSerializer::DecodeBound(JsonReader& reader,
   google_firestore_v1_ArrayValue positions;
 
   std::vector<json> values = reader.RequiredArray("values", bound_json);
-  positions.values_count = values.size();
+  positions.values_count = static_cast<pb_size_t>(values.size());
+  positions.values =
+      nanopb::MakeArray<google_firestore_v1_Value>(positions.values_count);
   for (size_t i = 0; i < values.size(); ++i) {
     positions.values[i] = DecodeValue(reader, values[i]);
   }
@@ -684,10 +695,8 @@ google_firestore_v1_Value BundleSerializer::DecodeValue(
         nanopb::MakeBytesArray(reader.RequiredString("referenceValue", value));
   } else if (value.contains("geoPointValue")) {
     result.which_value_type = google_firestore_v1_Value_geo_point_value_tag;
-    result.geo_point_value.latitude =
-        reader.OptionalDouble("latitude", value, 0.0);
-    result.geo_point_value.longitude =
-        reader.OptionalDouble("longitude", value, 0.0);
+    result.geo_point_value =
+        DecodeGeoPointValue(reader, value.at("geoPointValue"));
   } else if (value.contains("arrayValue")) {
     result.which_value_type = google_firestore_v1_Value_array_value_tag;
     result.array_value = DecodeArrayValue(reader, value.at("arrayValue"));
@@ -698,7 +707,7 @@ google_firestore_v1_Value BundleSerializer::DecodeValue(
     reader.Fail("Failed to decode value, no type is recognized");
     return {};
   }
-  return NullValue();
+  return result;
 }
 
 google_firestore_v1_MapValue BundleSerializer::DecodeMapValue(
@@ -720,7 +729,10 @@ google_firestore_v1_MapValue BundleSerializer::DecodeMapValue(
   }
 
   google_firestore_v1_MapValue map_value{};
-  map_value.fields_count = sorted_values.size();
+  map_value.fields_count = static_cast<pb_size_t>(sorted_values.size());
+  map_value.fields =
+      nanopb::MakeArray<google_firestore_v1_MapValue_FieldsEntry>(
+          map_value.fields_count);
 
   auto* field = map_value.fields;
   for (const auto& entry : sorted_values) {
@@ -736,7 +748,9 @@ google_firestore_v1_ArrayValue BundleSerializer::DecodeArrayValue(
   const auto& values = reader.RequiredArray("values", array_json);
 
   google_firestore_v1_ArrayValue array_value{};
-  array_value.values_count = values.size();
+  array_value.values_count = static_cast<pb_size_t>(values.size());
+  array_value.values =
+      nanopb::MakeArray<google_firestore_v1_Value>(array_value.values_count);
 
   auto* value = array_value.values;
   for (const json& json_value : values) {

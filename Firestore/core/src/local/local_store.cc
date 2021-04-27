@@ -603,11 +603,7 @@ MutableDocumentMap LocalStore::PopulateDocumentChanges(
   for (const auto& kv : documents) {
     const DocumentKey& key = kv.first;
     const MutableDocument& doc = kv.second;
-    absl::optional<MutableDocument> existing_doc;
-    auto found_existing = existing_docs.get(key);
-    if (found_existing) {
-      existing_doc = *found_existing;
-    }
+    const MutableDocument& existing_doc = *(existing_docs.get(key));
     auto search_version = document_versions.find(key);
     const SnapshotVersion& read_time = search_version != document_versions.end()
                                            ? search_version->second
@@ -621,9 +617,10 @@ MutableDocumentMap LocalStore::PopulateDocumentChanges(
       // events. We remove these documents from cache since we lost access.
       remote_document_cache_->Remove(key);
       changed_docs = changed_docs.insert(key, doc);
-    } else if (!existing_doc || doc.version() > existing_doc->version() ||
-               (doc.version() == existing_doc->version() &&
-                existing_doc->has_pending_writes())) {
+    } else if (!existing_doc.is_valid_document() ||
+               doc.version() > existing_doc.version() ||
+               (doc.version() == existing_doc.version() &&
+                existing_doc.has_pending_writes())) {
       HARD_ASSERT(read_time != SnapshotVersion::None(),
                   "Cannot add a document when the remote version is zero");
       remote_document_cache_->Add(doc, read_time);
@@ -632,7 +629,7 @@ MutableDocumentMap LocalStore::PopulateDocumentChanges(
       LOG_DEBUG(
           "LocalStore Ignoring outdated update for %s. "
           "Current version: %s  Remote version: %s",
-          key.ToString(), existing_doc->version().ToString(),
+          key.ToString(), existing_doc.version().ToString(),
           doc.version().ToString());
     }
   }

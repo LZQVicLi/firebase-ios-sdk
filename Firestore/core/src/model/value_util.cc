@@ -506,8 +506,8 @@ bool IsNaNValue(const google_firestore_v1_Value& value) {
          isnan(value.double_value);
 }
 
-google_firestore_v1_Value RefValue(const model::DatabaseId database_id,
-                                   const model::DocumentKey document_key) {
+google_firestore_v1_Value RefValue(const model::DatabaseId& database_id,
+                                   const model::DocumentKey& document_key) {
   google_firestore_v1_Value result{};
   result.which_value_type = google_firestore_v1_Value_reference_value_tag;
   result.string_value = nanopb::MakeBytesArray(util::StringFormat(
@@ -520,8 +520,11 @@ google_firestore_v1_Value DeepClone(const google_firestore_v1_Value& source) {
   google_firestore_v1_Value target = source;
   switch (source.which_value_type) {
     case google_firestore_v1_Value_string_value_tag:
-      target.string_value = nanopb::MakeBytesArray(source.string_value->bytes,
-                                                   source.string_value->size);
+      target.string_value =
+          source.string_value
+              ? nanopb::MakeBytesArray(source.string_value->bytes,
+                                       source.string_value->size)
+              : nullptr;
       break;
 
     case google_firestore_v1_Value_reference_value_tag:
@@ -530,8 +533,10 @@ google_firestore_v1_Value DeepClone(const google_firestore_v1_Value& source) {
       break;
 
     case google_firestore_v1_Value_bytes_value_tag:
-      target.bytes_value = nanopb::MakeBytesArray(source.bytes_value->bytes,
-                                                  source.bytes_value->size);
+      target.bytes_value =
+          source.bytes_value ? nanopb::MakeBytesArray(source.bytes_value->bytes,
+                                                      source.bytes_value->size)
+                             : nullptr;
       break;
 
     case google_firestore_v1_Value_array_value_tag:
@@ -570,6 +575,20 @@ google_firestore_v1_ArrayValue DeepClone(
     target.values[i] = DeepClone(source.values[i]);
   }
   return target;
+}
+
+template <typename I, typename O>
+void SetRepeatedField(O** fields_array,
+                      pb_size_t* fields_count,
+                      std::vector<I> fields,
+                      std::function<O(const I&)> converter) {
+  *fields_array = nanopb::MakeArray<O>(static_cast<pb_size_t>(fields.size()));
+  *fields_count = static_cast<pb_size_t>(fields.size());
+  auto* current = *fields_array;
+  for (const auto& field : fields) {
+    *current = converter(field);
+    ++current;
+  }
 }
 
 }  // namespace model

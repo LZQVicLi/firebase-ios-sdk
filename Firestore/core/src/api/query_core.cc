@@ -56,6 +56,7 @@ using core::ViewSnapshot;
 using model::DocumentKey;
 using model::FieldPath;
 using model::GetTypeOrder;
+using model::RefValue;
 using model::ResourcePath;
 using model::TypeOrder;
 using util::Status;
@@ -425,11 +426,7 @@ google_firestore_v1_Value Query::ParseExpectedReferenceValue(
           path.CanonicalString());
     }
 
-    google_firestore_v1_Value result{};
-    result.which_value_type = google_firestore_v1_Value_reference_value_tag;
-    result.reference_value = nanopb::MakeBytesArray(
-        path.CanonicalString());  // Missing firestore_->database_id(),
-    return result;
+    return RefValue(firestore_->database_id(), DocumentKey{path});
   } else if (GetTypeOrder(value) == TypeOrder::kReference) {
     return value;
   } else {

@@ -451,7 +451,7 @@ TEST_F(LocalSerializerTest, EncodesMutationBatch) {
   SetRepeatedField(&base_proto.update_mask.field_paths,
                    &base_proto.update_mask.field_paths_count,
                    {MakeBytesArray("a")});
-  base_proto.has_current_document=true;
+  base_proto.has_current_document = true;
   base_proto.current_document.which_condition_type =
       google_firestore_v1_Precondition_exists_tag;
   base_proto.current_document.exists = true;

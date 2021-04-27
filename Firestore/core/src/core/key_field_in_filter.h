@@ -38,10 +38,8 @@ class KeyFieldInFilter : public FieldFilter {
  private:
   class Rep;
 
-  static bool Contains(const google_firestore_v1_ArrayValue& array_value,
-                       const model::Document& doc);
-
-  static void ValidateArrayValue(const google_firestore_v1_Value& value);
+  static std::set<model::DocumentKey> ExtractDocumentKeysFromValue(
+      const google_firestore_v1_Value& value);
 
   friend class KeyFieldNotInFilter;
 };

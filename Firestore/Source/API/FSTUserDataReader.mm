@@ -238,8 +238,7 @@ NS_ASSUME_NONNULL_BEGIN
     }
   }];
 
-  google_firestore_v1_Value rootValue = updateData.Get();
-  return std::move(accumulator).UpdateData(ObjectValue{rootValue});
+  return std::move(accumulator).UpdateData(std::move(updateData));
 }
 
 - (google_firestore_v1_Value)parsedQueryValue:(id)input {
@@ -326,16 +325,19 @@ NS_ASSUME_NONNULL_BEGIN
     result.map_value.fields_count = count;
     result.map_value.fields = nanopb::MakeArray<google_firestore_v1_MapValue_FieldsEntry>(count);
 
+    // iOS requires MapValues to be sorted
+    NSArray *sortedKeys = [[dict allKeys] sortedArrayUsingSelector:@selector(compare:)];
     __block pb_size_t index = 0;
-    [dict enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *) {
+    for (NSString *key in sortedKeys) {
       absl::optional<google_firestore_v1_Value> parsedValue =
-          [self parseData:value context:context.ChildContext(util::MakeString(key))];
+          [self parseData:[dict valueForKey:key]
+                  context:context.ChildContext(util::MakeString(key))];
       if (parsedValue) {
         result.map_value.fields[index].key = nanopb::MakeBytesArray(util::MakeString(key));
         result.map_value.fields[index].value = *parsedValue;
         ++index;
       }
-    }];
+    };
   }
 
   return result;
